@@ -27,6 +27,7 @@ type alias Model =
     , dragDrop : DragDrop.Model Int Insert
     , newCardName : String
     , columns : List Column
+    , addingCard : Bool
     }
 
 
@@ -56,7 +57,7 @@ addCard : String -> List Card -> List Card
 addCard name cards =
     let
         newCard =
-            Card (nextCardId cards) name "Todo"
+            Card (nextCardId cards) name "Leads"
     in
         newCard :: cards
 
@@ -108,15 +109,16 @@ nextCardId cards =
 
 
 nrOfGeneratedCards =
-    1
+    4
 
 
+model : Model
 model =
-    { cards = List.foldr addCard [] ([ "A card", "Another card", "Yet another card" ] ++ (List.repeat nrOfGeneratedCards "generated card"))
+    { cards = List.foldr addCard [] ([ "Bob", "Fred", "Suzy" ] ++ (List.repeat nrOfGeneratedCards "Albert"))
     , dragDrop = DragDrop.init
     , newCardName = ""
-    , columns = [ { id = 1, name = "Todo", collapsed = False }, { id = 2, name = "Doing", collapsed = False }, { id = 3, name = "Done", collapsed = False } ]
-    , report = Nothing
+    , columns = [ { id = 1, name = "Leads", collapsed = False }, { id = 2, name = "First Contact", collapsed = False }, { id = 3, name = "Interested", collapsed = False } ]
+    , addingCard = False
     }
 
 
@@ -127,6 +129,7 @@ model =
 type Msg
     = DragDropMsg (DragDrop.Msg Int Insert)
     | AddCard
+    | ToggleAddCard
     | EnterCardName String
     | ToggleCollapse Int
 
@@ -165,10 +168,14 @@ update msg model =
         AddCard ->
             ( { model
                 | cards = addCard model.newCardName model.cards
-                , newCardName = "Poop"
+                , addingCard = False
+                , newCardName = ""
               }
             , Cmd.none
             )
+
+        ToggleAddCard ->
+            ( { model | addingCard = not model.addingCard, newCardName = "" }, Cmd.none )
 
         EnterCardName newName ->
             ( { model | newCardName = newName }, Cmd.none )
@@ -193,33 +200,15 @@ update msg model =
 
 
 cardStyle =
-    style
-        [ ( "background", "white" )
-        , ( "box-shadow", "0.5px 0.5px 3px #00000080" )
-        , ( "height", "40px" )
-        , ( "margin", "10px" )
-        , ( "padding", "10px" )
-        , ( "border-radius", "2px" )
-        ]
+    class "card"
 
 
 columnStyle =
-    style
-        [ ( "background", "#B8C3F0" )
-        , ( "margin", "10px" )
-        , ( "padding", "10px" )
-        , ( "border-radius", "4px" )
-        , ( "width", "250px" )
-        ]
+    class "column"
 
 
 dropStyle =
-    style
-        [ ( "top", "50%" )
-        , ( "margin", "10px" )
-        , ( "height", "100%" )
-        , ( "border", "2px dashed black" )
-        ]
+    class "dropZone"
 
 
 inputCardStyle =
@@ -241,13 +230,7 @@ instructionStyle =
 
 
 columnStyleCollapsed =
-    style
-        [ ( "background", "#B8C3F0" )
-        , ( "margin", "10px" )
-        , ( "padding", "10px" )
-        , ( "border-radius", "4px" )
-        , ( "width", "5px" )
-        ]
+    class "collapsed"
 
 
 dropZone insert =
@@ -302,15 +285,27 @@ getOneAfterThisOne list thisOne =
             Nothing
 
 
+viewCardInput : String -> Html Msg
 viewCardInput nameSoFar =
     div [ cardStyle ]
-        [ input [ size 14, Events.onInput EnterCardName, value nameSoFar ] []
-        , button [ Events.onClick AddCard ] [ text "Add" ]
+        [ input [ size 14, Events.onInput EnterCardName, placeholder "Name", value nameSoFar ] []
+        , div [ class "cardBtns" ]
+            [ button [ class "btn btn-secondary btn-sm", Events.onClick ToggleAddCard ] [ text "Cancel" ]
+            , button [ class "btn btn-primary btn-sm", Events.onClick AddCard ] [ text "Add" ]
+            ]
         ]
 
 
-viewColumn : List Card -> Column -> Int -> Maybe Int -> Html Msg
-viewColumn cards column colId dragId =
+viewColumn :
+    { cards : List Card
+    , column : Column
+    , colId : Int
+    , dragId : Maybe Int
+    , addingCard : Bool
+    , newCardName : String
+    }
+    -> Html Msg
+viewColumn { cards, column, colId, dragId, addingCard, newCardName } =
     let
         allCardIds =
             cardIds cards
@@ -346,6 +341,16 @@ viewColumn cards column colId dragId =
 
         viewCards =
             List.map (\card -> viewCard card (showZones card.id)) cards
+
+        collapseBtn =
+            button [ class "btn btn-primary right", Events.onClick (ToggleCollapse column.id) ]
+                [ text
+                    (if column.collapsed then
+                        "+"
+                     else
+                        "Collapse"
+                    )
+                ]
     in
         div
             [ if column.collapsed then
@@ -354,16 +359,25 @@ viewColumn cards column colId dragId =
                 columnStyle
             ]
             ([ p []
-                [ text column.name
-                , button [ Events.onClick (ToggleCollapse column.id) ] [ text "collapse" ]
+                [ collapseBtn
+                , h3 [ class "colTitle" ] [ text column.name ]
                 ]
-             , button [ Events.onClick AddCard ] [ text "Add Card" ]
+             , if colId == 0 then
+                div []
+                    [ if addingCard then
+                        viewCardInput newCardName
+                      else
+                        button [ class "btn btn-primary addCard", Events.onClick ToggleAddCard ] [ text "Add Card" ]
+                    ]
+               else
+                text ""
              ]
                 ++ viewCards
                 ++ lastDropZone
             )
 
 
+view : Model -> Html Msg
 view model =
     let
         dragId =
@@ -371,7 +385,18 @@ view model =
 
         columns =
             model.columns
-                |> List.map (\column -> viewColumn (cardsInColumn model.cards column.name) column 1 dragId)
+                |> List.indexedMap (,)
+                |> List.map
+                    (\( colId, column ) ->
+                        viewColumn
+                            { cards = (cardsInColumn model.cards column.name)
+                            , column = column
+                            , colId = colId
+                            , dragId = dragId
+                            , addingCard = model.addingCard
+                            , newCardName = model.newCardName
+                            }
+                    )
                 |> div [ columnsStyle ]
     in
         div [] [ columns ]
