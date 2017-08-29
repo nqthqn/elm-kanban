@@ -1,16 +1,71 @@
-body {
-    background-color: #ddd;
-    margin-top: 20px;
-    .main {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+$animSpeed: 300ms;
+$lightBlue: #DEF5FF;
+
+
+.collapsed {
+    background: $lightBlue;
+    margin: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    width: 55px;
+    transition: width $animSpeed ease-in-out;
+    div, .addCard {
+        opacity: 0;
+        transition: opacity $animSpeed ease-in-out;
     }
+    .colTitle {
+        transform: rotate(90deg);
+        transition: transform $animSpeed ease-in-out;
+        padding-left: 30px;
+        padding-bottom: 20px;
+    }
+}
+
+.right {
+    float: right;
+}
+
+
+.column {
+    background: $lightBlue;
+    margin: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    width: 250px;
+    transition: width $animSpeed ease-in-out;
+    div, .addCard {
+        opacity: 1;
+        transition: opacity $animSpeed ease-in-out;
+    }
+    .colTitle {
+        transition: all $animSpeed ease;
+    }
+}
+
+button:hover{
+    cursor: pointer;
+}
+.cardBtns {
+    margin-top:10px;
     button {
-        margin-right: 15px;
+        margin-right:5px;
     }
-    img {
-        width: 60px;
-        margin: 10px;
-    }
+}
+
+.addCard {
+    margin: 10px;
+}
+
+.card {
+    background: white;
+    // box-shadow: 0.5px 0.5px 3px #00000080;
+    margin: 10px;
+    padding: 10px;
+    border-radius: 2px;
+}
+
+.dropZone {
+    margin: 10px;
+    height: 100%;
+    border: 2px dashed black;
 }
